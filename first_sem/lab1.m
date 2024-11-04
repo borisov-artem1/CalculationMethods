@@ -1,10 +1,10 @@
 function lab1(isMaximization) % Основная функция, принимает параметр для задания типа задачи (максимизация или минимизация)
     clc; % Очищает консоль
-    debugFlag = 2; % Флаг для включения отладочного вывода
-    findMax = 0; % Инициализация переменной для переключения задачи максимизации
+    debugFlag = 1; % Флаг для включения отладочного вывода
+    taskType = 0; % Инициализация переменной для переключения задачи максимизации
 
     % Инициализация исходной матрицы
-    matrix = [
+    initMatrix = [
         3 5 2 4 8;
         10 10 4 3 6;
         5 6 9 8 3;
@@ -13,103 +13,103 @@ function lab1(isMaximization) % Основная функция, принима�
     ];
 
     disp('Начальная матрица:');
-    disp(matrix); % Вывод исходной матрицы
+    disp(initMatrix); % Вывод исходной матрицы
 
     % Копируем матрицу для дальнейших преобразований
-    C = matrix;
+    workMatrix = initMatrix;
 
     % Проверка на тип задачи (максимизация или минимизация)
     if isMaximization
-        C = convertToMin(matrix); % Преобразует задачу к минимизации, если исходная задача на максимизацию
+        workMatrix = convertToMin(initMatrix); % Преобразует задачу к минимизации, если исходная задача на максимизацию
         if debugFlag == 1 
             disp('Преобразованная матрица для задачи минимизации:');
-            disp(C);
+            disp(workMatrix);
         end
     end
 
     % Вычитание минимальных элементов по столбцам
-    C = updateColumns(C);
+    workMatrix = updateColumns(workMatrix);
     if debugFlag == 1
         disp('Матрица после вычитания минимального элемента по столбцам:');
-        disp(C);
+        disp(workMatrix);
     end
 
     % Вычитание минимальных элементов по строкам
-    C = updateRows(C);
+    workMatrix = updateRows(workMatrix);
     if debugFlag == 1 
         disp('Матрица после вычитания минимального элемента по строкам:');
-        disp(C);
+        disp(workMatrix);
     end
 
     % Получение размеров матрицы
-    [numRows, numCols] = size(C);
+    [numRows, numCols] = size(workMatrix);
 
     % Инициализация структуры для начального СНН
-    matrSIZ = initializeSIZ(C);
+    markingMatrix = initializeSIZ(workMatrix);
     if debugFlag == 1 
         disp('Начальное состояние СНН:');
-        printSIZ(C, matrSIZ); % Вывод начального состояния СНН
+        printSIZ(workMatrix, markingMatrix); % Вывод начального состояния СНН
     end
 
-    k = sum(matrSIZ(:));  % Подсчет нулей в СНН
+    zeroCount = sum(markingMatrix(:));  % Подсчет нулей в СНН
     if debugFlag == 1
-        fprintf('Количество нулей в СНН: k = %d\n\n', k);
+        fprintf('Количество нулей в СНН: k = %d\n\n', zeroCount);
     end 
 
     iteration = 1; % Счетчик итераций
-    while k < numCols
+    while zeroCount < numCols
         if debugFlag == 1 
             fprintf('--- Итерация №%d ---\n', iteration);
         end
 
-        matrStreak = zeros(numRows, numCols); % Матрица для отметки позиций с 0'
-        selectedColumns = sum(matrSIZ); % Вектор, хранящий информацию о выделенных столбцах
-        selectedRows = zeros(numRows, 1); % Вектор выделенных строк
-        selection = getSelectedMatrix(numRows, numCols, selectedColumns); % Получение выделенных строк и столбцов
+        markMatrix = zeros(numRows, numCols); % Матрица для отметки позиций с 0'
+        colSelection = sum(markingMatrix); % Вектор, хранящий информацию о выделенных столбцах
+        rowSelection = zeros(numRows, 1); % Вектор выделенных строк
+        selectedMatrix = getSelectedMatrix(numRows, numCols, colSelection); % Получение выделенных строк и столбцов
         
         if debugFlag == 1 
             disp('Результат выделения столбцов с 0*:');
-            printMarkedMatrix(C, matrSIZ, matrStreak, selectedColumns, selectedRows); % Отображение выбранных строк и столбцов
+            printMarkedMatrix(workMatrix, markingMatrix, markMatrix, colSelection, rowSelection); % Отображение выбранных строк и столбцов
         end
 
         isSearching = true; % Флаг для продолжения поиска
-        streakPnt = [-1 -1]; % Инициализация координат для отметки 0'
+        zeroMark = [-1 -1]; % Инициализация координат для отметки 0'
         
         while isSearching 
             if debugFlag == 1 
                 disp('Поиск нулевого элемента среди невыделенных');
             end
 
-            streakPnt = findZero(C, selection); % Находим первую невыделенную 0
-            if streakPnt(1) == -1
-                C = updateMatrixNoZero(C, numRows, numCols, selection, selectedRows, selectedColumns); % Если нет 0, обновляем матрицу
+            zeroMark = findZero(workMatrix, selectedMatrix); % Находим первую невыделенную 0
+            if zeroMark(1) == -1
+                workMatrix = updateMatrixNoZero(workMatrix, numRows, numCols, selectedMatrix, rowSelection, colSelection); % Если нет 0, обновляем матрицу
 
                 if debugFlag == 1 
                     disp('Обновленная матрица после добавления нового 0:');
-                    printMarkedMatrix(C, matrSIZ, matrStreak, selectedColumns, selectedRows);
+                    printMarkedMatrix(workMatrix, markingMatrix, markMatrix, colSelection, rowSelection);
                 end
 
-                streakPnt = findZero(C, selection); % Повторно ищем 0
+                zeroMark = findZero(workMatrix, selectedMatrix); % Повторно ищем 0
             end
         
-            matrStreak(streakPnt(1), streakPnt(2)) = 1; % Помечаем найденный 0'
+            markMatrix(zeroMark(1), zeroMark(2)) = 1; % Помечаем найденный 0'
             if debugFlag == 1 
                 disp('Матрица с пометкой найденного 0-штрих');
-                printMarkedMatrix(C, matrSIZ, matrStreak, selectedColumns, selectedRows);
+                printMarkedMatrix(workMatrix, markingMatrix, markMatrix, colSelection, rowSelection);
             end
 
-            zeroStarInRow = getZeroInRow(streakPnt, numCols, matrSIZ); % Ищем 0* в строке с 0'
+            zeroStarInRow = getZeroInRow(zeroMark, numCols, markingMatrix); % Ищем 0* в строке с 0'
             if zeroStarInRow(1) == -1
                 isSearching = false; % Завершаем поиск
             else
-                selection(:, zeroStarInRow(2)) = selection(:, zeroStarInRow(2)) - 1; % Снимаем выделение столбца
-                selectedColumns(zeroStarInRow(2)) = 0;
+                selectedMatrix(:, zeroStarInRow(2)) = selectedMatrix(:, zeroStarInRow(2)) - 1; % Снимаем выделение столбца
+                colSelection(zeroStarInRow(2)) = 0;
 
-                selection(zeroStarInRow(1), :) = selection(zeroStarInRow(1), :) + 1; % Выделяем строку
-                selectedRows(zeroStarInRow(1)) = 1;
+                selectedMatrix(zeroStarInRow(1), :) = selectedMatrix(zeroStarInRow(1), :) + 1; % Выделяем строку
+                rowSelection(zeroStarInRow(1)) = 1;
                 if debugFlag == 1 
                     disp('Переопределение выделения строки/столбца для обработки 0*');
-                    printMarkedMatrix(C, matrSIZ, matrStreak, selectedColumns, selectedRows);
+                    printMarkedMatrix(workMatrix, markingMatrix, markMatrix, colSelection, rowSelection);
                 end
             end
         end
@@ -119,13 +119,13 @@ function lab1(isMaximization) % Основная функция, принима�
         end
 
         % Построение L-цепочки, заменяющей 0* на 0'
-        [matrStreak, matrSIZ] = createChain(numRows, numCols, streakPnt, matrStreak, matrSIZ);
+        [markMatrix, markingMatrix] = createChain(numRows, numCols, zeroMark, markMatrix, markingMatrix);
 
-        k = sum(matrSIZ(:));  % Обновление количества нулей
+        zeroCount = sum(markingMatrix(:));  % Обновление количества нулей
         if debugFlag == 1
             disp('Обновленное СНН:');
-            printSIZ(C, matrSIZ); 
-            fprintf('Обновленное k = %d\n', k);
+            printSIZ(workMatrix, markingMatrix); 
+            fprintf('Обновленное k = %d\n', zeroCount);
         end
         
         iteration = iteration + 1;
@@ -133,25 +133,26 @@ function lab1(isMaximization) % Основная функция, принима�
     end
 
     disp('Конечное состояние СНН:');
-    printSIZ(C, matrSIZ);
+    printSIZ(workMatrix, markingMatrix);
 
     disp('Матрица X:');
-    disp(matrSIZ);
+    disp(markingMatrix);
 
-    fOpt = calculateOptimal(matrix, matrSIZ); % Расчет оптимального значения
-    fprintf("Оптимальное значение = %d\n", fOpt);
-end 
+    optimalValue = calculateOptimal(initMatrix, markingMatrix); % Расчет оптимального значения
+    fprintf("Оптимальное значение = %d\n", optimalValue);
+end
+
 
 
 % Функция для нахождения невыделенного 0
-function [streakPnt] = findZero(matr, selection) 
-    streakPnt = [-1 -1];
-    [numRows, numCols] = size(matr);
-    for i = 1 : numCols
-        for j = 1 : numRows
-           if selection(j, i) == 0 && matr(j, i) == 0 
-                streakPnt(1) = j;
-                streakPnt(2) = i;
+function [zeroPosition] = findZero(matrix, selection) 
+    zeroPosition = [-1 -1];
+    [rows, cols] = size(matrix);
+    for colIdx = 1 : cols
+        for rowIdx = 1 : rows
+           if selection(rowIdx, colIdx) == 0 && matrix(rowIdx, colIdx) == 0 
+                zeroPosition(1) = rowIdx;
+                zeroPosition(2) = colIdx;
                 return;
            end
         end 
@@ -159,16 +160,16 @@ function [streakPnt] = findZero(matr, selection)
 end
 
 % Вывод текущего состояния СНН
-function [] = printSIZ(matr, matrSIZ)
-    [numRows, numCols] = size(matr);
+function [] = printSIZ(matrix, markingMatrix)
+    [rows, cols] = size(matrix);
 
     fprintf("\n");
-    for i = 1 : numRows
-        for j = 1 : numCols
-            if matrSIZ(i, j) == 1
-                fprintf("\t%d*\t", matr(i, j));
+    for rowIdx = 1 : rows
+        for colIdx = 1 : cols
+            if markingMatrix(rowIdx, colIdx) == 1
+                fprintf("\t%d*\t", matrix(rowIdx, colIdx));
             else
-                fprintf("\t%d\t", matr(i, j));
+                fprintf("\t%d\t", matrix(rowIdx, colIdx));
             end
         end
         fprintf("\n");
@@ -176,179 +177,207 @@ function [] = printSIZ(matr, matrSIZ)
     fprintf("\n");
 end
 
-% Вывод матрицы с отметками
-function [] = printMarkedMatrix(matr, matrSIZ, matrStreak, selectedCols, selectedRows)
-    [numRows, numCols] = size(matr);
 
-    for i = 1 : numRows
-        if selectedRows(i) == 1
-            fprintf("+")
+% Вывод матрицы с отметками
+function [] = printMarkedMatrix(matrix, markingMatrix, tempMarkingMatrix, selectedCols, selectedRows)
+    [rowCount, colCount] = size(matrix); % Получение количества строк и столбцов матрицы
+
+    % Проход по строкам матрицы
+    for rowIdx = 1 : rowCount
+        if selectedRows(rowIdx) == 1 % Проверка, выделена ли текущая строка
+            fprintf("+"); % Печать символа '+' для выделенной строки
         end
 
-        for j = 1 : numCols
-            fprintf("\t%d", matr(i, j))
-            if matrSIZ(i, j) == 1 
-                fprintf("*\t");
-            elseif matrStreak(i, j) == 1
-                fprintf("'\t")
+        % Проход по столбцам матрицы
+        for colIdx = 1 : colCount
+            fprintf("\t%d", matrix(rowIdx, colIdx)); % Печать значения элемента матрицы с табуляцией
+            if markingMatrix(rowIdx, colIdx) == 1 % Проверка, является ли элемент 0*
+                fprintf("*\t"); % Печать '*' рядом с элементом 0*
+            elseif tempMarkingMatrix(rowIdx, colIdx) == 1 % Проверка, является ли элемент 0'
+                fprintf("'\t"); % Печать "'" рядом с элементом 0'
             else
-                fprintf("\t");
+                fprintf("\t"); % Печать дополнительной табуляции, если элемент не помечен
             end
         end
     
-        fprintf('\n');
+        fprintf('\n'); % Переход на новую строку после печати строки матрицы
     end
 
-    for i = 1 : numCols
-        if selectedCols(i) == 1
-            fprintf("\t+\t")
+    % Печать выделенных столбцов
+    for colIdx = 1 : colCount
+        if selectedCols(colIdx) == 1 % Проверка, выделен ли столбец
+            fprintf("\t+\t"); % Печать '+' под выделенным столбцом
         else 
-            fprintf(" \t\t")
+            fprintf(" \t\t"); % Печать пустой табуляции для невыделенного столбца
         end 
     end
-    fprintf('\n\n');
+    fprintf('\n\n'); % Переход на новую строку после завершения печати всех столбцов
 end
 
 % Преобразование для задачи минимизации
-function matr = convertToMin(matr)
-    maxElem = max(max(matr));
-    matr = matr * (-1) + maxElem;
+function transformedMatrix = convertToMin(matrix)
+    maxElement = max(max(matrix)); % Находим максимальный элемент в матрице
+    transformedMatrix = matrix * (-1) + maxElement; % Преобразуем элементы, чтобы найти эквивалент минимизации
 end
 
-% В каждом столбце C находит минимальный элемент и вычитает его из столбца
-function matr = updateColumns(matr)
-    minElemArr = min(matr);
-    for i = 1 : length(minElemArr)
-        matr(:, i) = matr(:, i) - minElemArr(i);
+% В каждом столбце матрицы находит минимальный элемент и вычитает его из столбца
+function updatedMatrix = updateColumns(matrix)
+    minElementsByColumn = min(matrix); % Находим минимальные элементы для каждого столбца
+    updatedMatrix = matrix; % Создаём копию матрицы для обновлений
+    for colIdx = 1 : length(minElementsByColumn) % Проход по каждому столбцу
+        updatedMatrix(:, colIdx) = updatedMatrix(:, colIdx) - minElementsByColumn(colIdx); % Вычитаем минимальное значение из столбца
     end
 end
 
-% В каждой строке C находит минимальный элемент и вычитает его из строки
-function matr = updateRows(matr)
-    minElemArr = min(matr, [], 2);
-    for i = 1 : length(minElemArr)
-        matr(i, :) = matr(i, :) - minElemArr(i);
+% В каждой строке матрицы находит минимальный элемент и вычитает его из строки
+function updatedMatrix = updateRows(matrix)
+    minElementsByRow = min(matrix, [], 2); % Находим минимальные элементы для каждой строки
+    updatedMatrix = matrix; % Создаём копию матрицы для обновлений
+    for rowIdx = 1 : length(minElementsByRow) % Проход по каждой строке
+        updatedMatrix(rowIdx, :) = updatedMatrix(rowIdx, :) - minElementsByRow(rowIdx); % Вычитаем минимальное значение из строки
     end
 end
 
-% Начальная СНН
-function matrSIZ = initializeSIZ(matr)
-    [numRows, numCols] = size(matr);
-    matrSIZ = zeros(numRows, numCols);
 
-    for i = 1: numCols
-        for j = 1 : numRows
-            if matr(j, i) == 0
-                count = 0;
-                for k = 1 : numCols
-                   count = count + matrSIZ(j, k);
-                end
-                for k = 1 : numRows
-                   count = count + matrSIZ(k, i);
+% Инициализация начальной СНН
+function assignmentMatrix = initializeSIZ(inputMatrix)
+    [rowCount, colCount] = size(inputMatrix); % Определение количества строк и столбцов исходной матрицы
+    assignmentMatrix = zeros(rowCount, colCount); % Создание нулевой матрицы для СНН
+
+    % Проход по столбцам
+    for colIdx = 1 : colCount
+        % Проход по строкам
+        for rowIdx = 1 : rowCount
+            if inputMatrix(rowIdx, colIdx) == 0 % Проверка, является ли элемент нулем
+                zeroCount = 0; % Инициализация счетчика для проверки наличия отметок в строке и столбце
+
+                % Подсчет отметок в текущей строке
+                for colCheck = 1 : colCount
+                   zeroCount = zeroCount + assignmentMatrix(rowIdx, colCheck);
                 end
 
-                if count == 0
-                    matrSIZ(j, i) = 1;
+                % Подсчет отметок в текущем столбце
+                for rowCheck = 1 : rowCount
+                   zeroCount = zeroCount + assignmentMatrix(rowCheck, colIdx);
+                end
+
+                % Установка отметки 0*, если не найдено других отметок в строке и столбце
+                if zeroCount == 0
+                    assignmentMatrix(rowIdx, colIdx) = 1;
                 end
             end
         end
     end
 end
 
-% Получение целочисленного решения
-function fOpt = calculateOptimal(matr, matrSIZ)
-    fOpt = 0;
-    [numRows, numCols] = size(matr);
-    for i = 1 : numRows
-        for j = 1 : numCols
-            if matrSIZ(i, j) == 1
-                fOpt = fOpt + matr(i, j);
+% Получение целочисленного оптимального решения
+function optimalValue = calculateOptimal(costMatrix, assignmentMatrix)
+    optimalValue = 0; % Инициализация оптимального значения
+    [rowCount, colCount] = size(costMatrix); % Получение размеров матрицы
+
+    % Проход по всем элементам матрицы
+    for rowIdx = 1 : rowCount
+        for colIdx = 1 : colCount
+            if assignmentMatrix(rowIdx, colIdx) == 1 % Проверка, есть ли отметка 0* в позиции
+                optimalValue = optimalValue + costMatrix(rowIdx, colIdx); % Добавление значения элемента к оптимальному решению
             end
         end
     end
 end
 
-% Получение выделенных столбцов
-function selection = getSelectedMatrix(numRows, numCols, selectedColumns)
-    selection = zeros(numRows, numCols);
-    for i = 1 : numCols
-        if selectedColumns(i) == 1
-            selection(:, i) = 1;
+% Создание матрицы выделенных столбцов
+function selectionMatrix = getSelectedMatrix(rowCount, colCount, selectedColumns)
+    selectionMatrix = zeros(rowCount, colCount); % Инициализация матрицы выделения
+
+    % Проход по всем столбцам
+    for colIdx = 1 : colCount
+        if selectedColumns(colIdx) == 1 % Проверка, выделен ли столбец
+            selectionMatrix(:, colIdx) = 1; % Пометка выделенного столбца в матрице выделения
         end
     end
 end
 
-% Получение строки, где есть 0* и возвращает её
-function zeroStarInRow = getZeroInRow(streakPnt, numCols, matrSIZ)
-    zeroStarInRow = [-1 -1];
-    for j = 1 : numCols
-        if matrSIZ(streakPnt(1), j) == 1
-            zeroStarInRow(1) = streakPnt(1);
-            zeroStarInRow(2) = j;
+% Поиск строки с 0*, возвращает её
+function zeroStarRow = getZeroInRow(searchPoint, colCount, assignmentMatrix)
+    zeroStarRow = [-1 -1]; % Инициализация возвращаемого значения
+    rowIdx = searchPoint(1); % Индекс строки для поиска
+
+    % Проход по всем столбцам в указанной строке
+    for colIdx = 1 : colCount
+        if assignmentMatrix(rowIdx, colIdx) == 1 % Проверка наличия отметки 0*
+            zeroStarRow = [rowIdx, colIdx]; % Возврат координат позиции 0*
             return;
         end
     end
 end
 
-% Обновление матрицы, если отсутствует 0
-function matr = updateMatrixNoZero(matr, numRows, numCols, selection, selectedRows, selectedColumns)
-    delta = inf;
-    for i = 1:numRows
-        for j = 1:numCols
-            if selection(i, j) == 0
-                delta = min(delta, matr(i, j));
+% Обновление матрицы при отсутствии нуля
+function updatedMatrix = updateMatrixNoZero(matrix, rowCount, colCount, selectionMatrix, selectedRows, selectedColumns)
+    minDelta = inf; % Инициализация минимального значения для обновления
+
+    % Поиск минимального элемента в невыделенных ячейках
+    for rowIdx = 1 : rowCount
+        for colIdx = 1 : colCount
+            if selectionMatrix(rowIdx, colIdx) == 0 % Проверка, не выделена ли ячейка
+                minDelta = min(minDelta, matrix(rowIdx, colIdx)); % Обновление минимального значения
             end
         end
     end
 
-    for i = 1:numRows
-        for j = 1:numCols
-            if selection(i, j) == 0
-                matr(i, j) = matr(i, j) - delta;
+    % Обновление значений в матрице на основе выделенных строк и столбцов
+    for rowIdx = 1 : rowCount
+        for colIdx = 1 : colCount
+            if selectionMatrix(rowIdx, colIdx) == 0 % Если ячейка не выделена, вычитаем минимальное значение
+                matrix(rowIdx, colIdx) = matrix(rowIdx, colIdx) - minDelta;
             end
-            if selectedRows(i) == 1
-                matr(i, j) = matr(i, j) + delta;
+            if selectedRows(rowIdx) == 1 % Если строка выделена, прибавляем минимальное значение
+                matrix(rowIdx, colIdx) = matrix(rowIdx, colIdx) + minDelta;
             end
-            if selectedColumns(j) == 1
-                matr(i, j) = matr(i, j) + delta;
+            if selectedColumns(colIdx) == 1 % Если столбец выделен, прибавляем минимальное значение
+                matrix(rowIdx, colIdx) = matrix(rowIdx, colIdx) + minDelta;
             end
         end
     end
+    updatedMatrix = matrix; % Возврат обновленной матрицы
 end
 
-% Построение L-цепочки
-function [matrStreak, matrSIZ] = createChain(numRows, numCols, streakPnt, matrStreak, matrSIZ)
-    i = streakPnt(1);
-    j = streakPnt(2);
-    while i > 0 && j > 0 && i <= numRows && j <= numCols
-        matrStreak(i, j) = 0; % Убираем отметку 0*
+% Построение L-цепочки и обновление отметок
+function [tempMarkingMatrix, assignmentMatrix] = createChain(rowCount, colCount, startPoint, tempMarkingMatrix, assignmentMatrix)
+    rowIdx = startPoint(1); % Начальная строка цепочки
+    colIdx = startPoint(2); % Начальный столбец цепочки
 
-        matrSIZ(i, j) = 1; % Ставим новую отметку 0'
+    % Проход по цепочке до выхода за границы
+    while rowIdx > 0 && colIdx > 0 && rowIdx <= rowCount && colIdx <= colCount
+        tempMarkingMatrix(rowIdx, colIdx) = 0; % Снятие отметки 0'
 
-        fprintf("[%d, %d] ", i, j);
+        assignmentMatrix(rowIdx, colIdx) = 1; % Установка новой отметки 0*
 
-        % Переход к следующему элементу
-        kRow = 1;
-        while kRow <= numRows && (matrSIZ(kRow, j) ~= 1 || kRow == i)
-            kRow = kRow + 1;
+        fprintf("[%d, %d] ", rowIdx, colIdx); % Печать текущей позиции цепочки
+
+        % Переход к следующей позиции в строке
+        rowInChain = 1;
+        while rowInChain <= rowCount && (assignmentMatrix(rowInChain, colIdx) ~= 1 || rowInChain == rowIdx)
+            rowInChain = rowInChain + 1;
         end
 
-        if (kRow <= numRows)  
-            lCol = 1;
-            while lCol <= numCols && (matrStreak(kRow, lCol) ~= 1 || lCol == j)
-                lCol = lCol + 1;
+        % Если найдена отметка 0* в строке, продолжаем цепочку по столбцу
+        if (rowInChain <= rowCount)
+            colInChain = 1;
+            while colInChain <= colCount && (tempMarkingMatrix(rowInChain, colInChain) ~= 1 || colInChain == colIdx)
+                colInChain = colInChain + 1;
             end
 
-            if lCol <= numCols
-                matrSIZ(kRow, j) = 0;
-                fprintf("-> [%d, %d] -> ", kRow, j);
+            % Если найдена отметка 0' в столбце, обновляем цепочку
+            if colInChain <= colCount
+                assignmentMatrix(rowInChain, colIdx) = 0; % Снятие отметки 0* на предыдущей позиции
+                fprintf("-> [%d, %d] -> ", rowInChain, colIdx); % Печать следующей позиции цепочки
             end
-            j = lCol;
+            colIdx = colInChain; % Обновление индекса столбца
         end
-        i = kRow;
-     end
+        rowIdx = rowInChain; % Обновление индекса строки
+    end
 
-     fprintf("\n");
+    fprintf("\n"); % Печать новой строки для завершения цепочки
 end
 
 
